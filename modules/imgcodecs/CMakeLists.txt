@@ -23,11 +23,6 @@ if(HAVE_JPEG)
   list(APPEND GRFMT_LIBS ${JPEG_LIBRARIES})
 endif()
 
-if(HAVE_JPEGXL)
-  ocv_include_directories(${OPENJPEG_INCLUDE_DIRS})
-  list(APPEND GRFMT_LIBS ${OPENJPEG_LIBRARIES})
-endif()
-
 if(HAVE_WEBP)
   add_definitions(-DHAVE_WEBP)
   ocv_include_directories(${WEBP_INCLUDE_DIR})
@@ -208,5 +203,14 @@ endif()
 if(TARGET opencv_test_imgcodecs AND ((HAVE_PNG AND NOT (PNG_VERSION_STRING VERSION_LESS "1.6.31")) OR HAVE_SPNG))
   # details: https://github.com/glennrp/libpng/commit/68cb0aaee3de6371b81a4613476d9b33e43e95b1
   ocv_target_compile_definitions(opencv_test_imgcodecs PRIVATE OPENCV_IMGCODECS_PNG_WITH_EXIF=1)
+endif()
+if(TARGET opencv_test_imgcodecs AND ((HAVE_PNG AND NOT (PNG_VERSION_STRING VERSION_LESS "1.6.45")) OR HAVE_SPNG))
+  # cICP does not support in spng
+  # cICP support added in libpng 1.6.45
+  ocv_target_compile_definitions(opencv_test_imgcodecs PRIVATE OPENCV_IMGCODECS_PNG_WITH_cICP=1)
+endif()
+if(TARGET opencv_test_imgcodecs AND HAVE_PNG AND PNG_VERSION_STRING VERSION_LESS "1.6.0")
+  # Old libpng (< 1.6.0) is known to have lower precision in internal RGB-to-Gray calculation for 16-bit images.
+  ocv_target_compile_definitions(opencv_test_imgcodecs PRIVATE OPENCV_IMGCODECS_PNG_EPS_16BIT_GRAY=9)
 endif()
 ocv_add_perf_tests()

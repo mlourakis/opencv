@@ -66,9 +66,6 @@
 
 ////////////////////////////////// video io /////////////////////////////////
 
-typedef struct CvCapture CvCapture;
-typedef struct CvVideoWriter CvVideoWriter;
-
 namespace cv
 {
 
@@ -148,7 +145,7 @@ enum VideoCaptureProperties {
        CAP_PROP_FOURCC         =6, //!< 4-character code of codec. see VideoWriter::fourcc .
        CAP_PROP_FRAME_COUNT    =7, //!< Number of frames in the video file.
        CAP_PROP_FORMAT         =8, //!< Format of the %Mat objects (see Mat::type()) returned by VideoCapture::retrieve().
-                                   //!< Set value -1 to fetch undecoded RAW video streams (as Mat 8UC1).
+                                   //!< Set value -1 to fetch undecoded RAW video streams (as Mat 8UC1). Default is 8UC3. FFmpeg backend supports 8UC4 with alpha, if it's available.
        CAP_PROP_MODE           =9, //!< Backend-specific value indicating the current capture mode.
        CAP_PROP_BRIGHTNESS    =10, //!< Brightness of the image (only for those cameras that support).
        CAP_PROP_CONTRAST      =11, //!< Contrast of the image (only for cameras).
@@ -156,7 +153,7 @@ enum VideoCaptureProperties {
        CAP_PROP_HUE           =13, //!< Hue of the image (only for cameras).
        CAP_PROP_GAIN          =14, //!< Gain of the image (only for those cameras that support).
        CAP_PROP_EXPOSURE      =15, //!< Exposure (only for those cameras that support).
-       CAP_PROP_CONVERT_RGB   =16, //!< Boolean flags indicating whether images should be converted to RGB. <br/>
+       CAP_PROP_CONVERT_RGB   =16, //!< Boolean flags indicating whether images should be converted to BGR. <br/>
                                    //!< *GStreamer note*: The flag is ignored in case if custom pipeline is used. It's user responsibility to interpret pipeline output.
        CAP_PROP_WHITE_BALANCE_BLUE_U =17, //!< Currently unsupported.
        CAP_PROP_RECTIFICATION =18, //!< Rectification flag for stereo cameras (note: only supported by DC1394 v 2.x backend currently).
@@ -236,6 +233,8 @@ enum VideoWriterProperties {
   VIDEOWRITER_PROP_KEY_FLAG = 11, //!< Set to non-zero to signal that the following frames are key frames or zero if not, when encapsulating raw video (\ref VIDEOWRITER_PROP_RAW_VIDEO != 0). FFmpeg back-end only.
   VIDEOWRITER_PROP_PTS = 12, //!< Specifies the frame presentation timestamp for each frame using the FPS time base. This property is **only** necessary when encapsulating **externally** encoded video where the decoding order differs from the presentation order, such as in GOP patterns with bi-directional B-frames. The value should be provided by your external encoder and for video sources with fixed frame rates it is equivalent to dividing the current frame's presentation time (\ref CAP_PROP_POS_MSEC) by the frame duration (1000.0 / VideoCapture::get(\ref CAP_PROP_FPS)). It can be queried from the resulting encapsulated video file using VideoCapture::get(\ref CAP_PROP_PTS). FFmpeg back-end only.
   VIDEOWRITER_PROP_DTS_DELAY = 13, //!< Specifies the maximum difference between presentation (pts) and decompression timestamps (dts) using the FPS time base. This property is necessary **only** when encapsulating **externally** encoded video where the decoding order differs from the presentation order, such as in GOP patterns with bi-directional B-frames. The value should be calculated based on the specific GOP pattern used during encoding. For example, in a GOP with presentation order IBP and decoding order IPB, this value would be 1, as the B-frame is the second frame presented but the third to be decoded. It can be queried from the resulting encapsulated video file using VideoCapture::get(\ref CAP_PROP_DTS_DELAY). Non-zero values usually imply the stream is encoded using B-frames. FFmpeg back-end only.
+  VIDEOWRITER_PROP_COLOR_SPACE = 14, //!< (**open-only**) GStreamer backend only. Pixel format for the encoding profile. Default is "I420". Other values: "NV12", "BGRx". See GStreamer raw video formats for more options.
+  VIDEOWRITER_PROP_ENABLE_ALPHA = 15, //!< (**open-only**) FFmpeg backend only. Defines that input frames contain alpha channel.
 #ifndef CV_DOXYGEN
   CV__VIDEOWRITER_PROP_LATEST
 #endif
@@ -268,6 +267,7 @@ enum VideoAccelerationType
     VIDEO_ACCELERATION_D3D11    =  2,  //!< DirectX 11
     VIDEO_ACCELERATION_VAAPI    =  3,  //!< VAAPI
     VIDEO_ACCELERATION_MFX      =  4,  //!< libmfx (Intel MediaSDK/oneVPL)
+    VIDEO_ACCELERATION_DRM       =  5,  //!< Raspberry Pi V4
 };
 
 //! @} Hardware acceleration support
@@ -616,9 +616,19 @@ enum { CAP_PROP_IOS_DEVICE_FOCUS        = 9001,
 enum { CAP_PROP_GIGA_FRAME_OFFSET_X   = 10001,
        CAP_PROP_GIGA_FRAME_OFFSET_Y   = 10002,
        CAP_PROP_GIGA_FRAME_WIDTH_MAX  = 10003,
-       CAP_PROP_GIGA_FRAME_HEIGH_MAX  = 10004,
+       CAP_PROP_GIGA_FRAME_HEIGHT_MAX  = 10004,
+// Typo in pre-5.x sources. Remain for source compatibility
+#if CV_VERSION_MAJOR <= 4
+       CAP_PROP_GIGA_FRAME_HEIGH_MAX = CAP_PROP_GIGA_FRAME_HEIGHT_MAX, //!< @deprecated
+#endif
+
        CAP_PROP_GIGA_FRAME_SENS_WIDTH = 10005,
-       CAP_PROP_GIGA_FRAME_SENS_HEIGH = 10006
+       CAP_PROP_GIGA_FRAME_SENS_HEIGHT = 10006
+// Typo in pre-5.x sources. Remain for source compatibility
+#if CV_VERSION_MAJOR <= 4
+       ,
+       CAP_PROP_GIGA_FRAME_SENS_HEIGH = CAP_PROP_GIGA_FRAME_SENS_HEIGHT //!< @deprecated
+#endif
      };
 
 //! @} Smartek
@@ -713,6 +723,19 @@ enum VideoCaptureOBSensorProperties{
     CAP_PROP_OBSENSOR_INTRINSIC_FY=26002,
     CAP_PROP_OBSENSOR_INTRINSIC_CX=26003,
     CAP_PROP_OBSENSOR_INTRINSIC_CY=26004,
+    CAP_PROP_OBSENSOR_RGB_POS_MSEC=26005,
+    CAP_PROP_OBSENSOR_DEPTH_POS_MSEC=26006,
+    CAP_PROP_OBSENSOR_DEPTH_WIDTH=26007,
+    CAP_PROP_OBSENSOR_DEPTH_HEIGHT=26008,
+    CAP_PROP_OBSENSOR_DEPTH_FPS=26009,
+    CAP_PROP_OBSENSOR_COLOR_DISTORTION_K1=26010,
+    CAP_PROP_OBSENSOR_COLOR_DISTORTION_K2=26011,
+    CAP_PROP_OBSENSOR_COLOR_DISTORTION_K3=26012,
+    CAP_PROP_OBSENSOR_COLOR_DISTORTION_K4=26013,
+    CAP_PROP_OBSENSOR_COLOR_DISTORTION_K5=26014,
+    CAP_PROP_OBSENSOR_COLOR_DISTORTION_K6=26015,
+    CAP_PROP_OBSENSOR_COLOR_DISTORTION_P1=26016,
+    CAP_PROP_OBSENSOR_COLOR_DISTORTION_P2=26017
 };
 
 //! @} OBSENSOR
@@ -1046,7 +1069,6 @@ public:
             int64 timeoutNs = 0);
 
 protected:
-    Ptr<CvCapture> cap;
     Ptr<IVideoCapture> icap;
     bool throwOnFail;
 
@@ -1225,17 +1247,11 @@ public:
     CV_WRAP String getBackendName() const;
 
 protected:
-    Ptr<CvVideoWriter> writer;
     Ptr<IVideoWriter> iwriter;
 
     static Ptr<IVideoWriter> create(const String& filename, int fourcc, double fps,
                                     Size frameSize, bool isColor = true);
 };
-
-//! @cond IGNORED
-template<> struct DefaultDeleter<CvCapture>{ CV_EXPORTS void operator ()(CvCapture* obj) const; };
-template<> struct DefaultDeleter<CvVideoWriter>{ CV_EXPORTS void operator ()(CvVideoWriter* obj) const; };
-//! @endcond IGNORED
 
 //! @} videoio
 

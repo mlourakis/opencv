@@ -675,17 +675,17 @@ int CV_WarpPerspectiveTest::prepare_test_case( int test_case_idx )
     s[3] = Point2f(0,src.rows-1.f);
     d[3] = Point2f(0,dst.rows-1.f);
 
-    float bufer[16];
-    Mat tmp( 1, 16, CV_32FC1, bufer );
+    float buffer[16];
+    Mat tmp( 1, 16, CV_32FC1, buffer );
 
     rng.fill( tmp, RNG::NORMAL, Scalar::all(0.), Scalar::all(0.1) );
 
     for( i = 0; i < 4; i++ )
     {
-        s[i].x += bufer[i*4]*src.cols/2;
-        s[i].y += bufer[i*4+1]*src.rows/2;
-        d[i].x += bufer[i*4+2]*dst.cols/2;
-        d[i].y += bufer[i*4+3]*dst.rows/2;
+        s[i].x += buffer[i*4]*src.cols/2;
+        s[i].y += buffer[i*4+1]*src.rows/2;
+        d[i].x += buffer[i*4+2]*dst.cols/2;
+        d[i].y += buffer[i*4+3]*dst.rows/2;
     }
 
     cv::getPerspectiveTransform( s, d ).convertTo( mat, mat.depth() );
@@ -1558,6 +1558,33 @@ TEST(Imgproc_Warp, regression_19566)  // valgrind should detect problem if any
         cv::BORDER_CONSTANT,
         cv::Scalar(0.0, 0.0, 0.0, 255.0)
     );
+}
+
+
+TEST(Imgproc_Warp, regression_28554)
+{
+    const Size inSize(128, 128);
+    const Size outSize(256, 256);
+
+    Mat inMat = Mat::ones(inSize, CV_16S);
+    Mat outMat = Mat(outSize, CV_16S);
+    Mat coeffs = Mat::eye(2, 3, CV_64F);
+    coeffs.at<double>(0, 2) = 64.;
+    coeffs.at<double>(1, 2) = 64.;
+
+    warpAffine(
+        inMat,
+        outMat,
+        coeffs,
+        outSize,
+        INTER_NEAREST,
+        cv::BORDER_CONSTANT,
+        0.0
+    );
+
+    Mat reference = Mat::zeros(outSize, CV_16S);
+    reference(cv::Rect(64, 64, 128, 128)) = 1;
+    ASSERT_EQ(0.0, cvtest::norm(reference, outMat, NORM_INF));
 }
 
 

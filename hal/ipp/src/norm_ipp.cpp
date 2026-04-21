@@ -12,6 +12,7 @@
 int ipp_hal_norm(const uchar* src, size_t src_step, const uchar* mask, size_t mask_step,
                  int width, int height, int type, int norm_type, double* result)
 {
+    CV_HAL_CHECK_USE_IPP();
     if( mask )
     {
         IppiSize sz = { width, height };
@@ -20,7 +21,9 @@ int ipp_hal_norm(const uchar* src, size_t src_step, const uchar* mask, size_t ma
         ippiMaskNormFuncC1 ippiNorm_C1MR =
         norm_type == cv::NORM_INF ?
         (type == CV_8UC1 ? (ippiMaskNormFuncC1)ippiNorm_Inf_8u_C1MR :
+        #if (!IPP_DISABLE_NORM_INF_16U_C1MR)
         type == CV_16UC1 ? (ippiMaskNormFuncC1)ippiNorm_Inf_16u_C1MR :
+        #endif
         type == CV_32FC1 ? (ippiMaskNormFuncC1)ippiNorm_Inf_32f_C1MR :
         0) :
         norm_type == cv::NORM_L1 ?
@@ -129,6 +132,7 @@ int ipp_hal_norm(const uchar* src, size_t src_step, const uchar* mask, size_t ma
 int ipp_hal_normDiff(const uchar* src1, size_t src1_step, const uchar* src2, size_t src2_step, const uchar* mask,
                      size_t mask_step, int width, int height, int type, int norm_type, double* result)
 {
+    CV_HAL_CHECK_USE_IPP();
     if( norm_type & cv::NORM_RELATIVE )
     {
         norm_type &= cv::NORM_TYPE_MASK;
@@ -141,7 +145,9 @@ int ipp_hal_normDiff(const uchar* src1, size_t src1_step, const uchar* src2, siz
             ippiMaskNormDiffFuncC1 ippiNormRel_C1MR =
             norm_type == cv::NORM_INF ?
             (type == CV_8UC1 ? (ippiMaskNormDiffFuncC1)ippiNormRel_Inf_8u_C1MR :
+            #if (!IPP_DISABLE_NORM_INF_16U_C1MR)
             type == CV_16UC1 ? (ippiMaskNormDiffFuncC1)ippiNormRel_Inf_16u_C1MR :
+            #endif
             type == CV_32FC1 ? (ippiMaskNormDiffFuncC1)ippiNormRel_Inf_32f_C1MR :
             0) :
             norm_type == cv::NORM_L1 ?
@@ -230,7 +236,9 @@ int ipp_hal_normDiff(const uchar* src1, size_t src1_step, const uchar* src2, siz
         ippiMaskNormDiffFuncC1 ippiNormDiff_C1MR =
         norm_type == cv::NORM_INF ?
         (type == CV_8UC1 ? (ippiMaskNormDiffFuncC1)ippiNormDiff_Inf_8u_C1MR :
+        #if (!IPP_DISABLE_NORM_INF_16U_C1MR)
         type == CV_16UC1 ? (ippiMaskNormDiffFuncC1)ippiNormDiff_Inf_16u_C1MR :
+        #endif
         type == CV_32FC1 ? (ippiMaskNormDiffFuncC1)ippiNormDiff_Inf_32f_C1MR :
         0) :
         norm_type == cv::NORM_L1 ?
